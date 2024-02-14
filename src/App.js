@@ -8,9 +8,9 @@ import SIGNUP from './components/SignUpPage/signuppage'
 import HOME from './components/Home/home'
 import POST from './components/Post/Post'
 import REQUEST from './components/Request/requestquestion'
+import ENV from './components/Environment/env'
 import { BrowserRouter,Routes, Route} from 'react-router-dom';
 
-import './App.css';
 import './ProfilePage.css';
 import './popupdashboard.css';
 import './Chat.css';
@@ -67,8 +67,9 @@ function App() {
   console.log('isLoggedIn:', isLoggedIn);
   console.log('signedUp:', signedUp);
   console.log('userDataInformation:', userDataInformation);
-
 }
+const env = ['Family', 'College', 'Friends', 'Other'];
+
   return (
     <div>
       <>
@@ -82,6 +83,9 @@ function App() {
           <Route path='/profile' element={<PROFILEPAGE/>}/>
           <Route path='/post' element={<POST/>}/>
           <Route path='/requests' element={<REQUEST/>}/>
+          {env.map((word) => (
+        <Route key={word} path={`/env/:${word}`} element={<ENV env={word} />} />
+      ))}
         </Routes>
         </BrowserRouter>
               {activeComponent === 'DASHBOARD' ? <DASHBOARD /> : null}

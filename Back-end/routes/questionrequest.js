@@ -1,75 +1,111 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
 
 const Questions = require('../models/question')
 const Answers = require('../models/answer')
 
-const slugify = require('slugify');
+const {S3Client, GetObjectCommand, PutObjectCommand} = require('@aws-sdk/client-s3')
+const {getSignedUrl} = require("@aws-sdk/s3-request-presigner")
+
+const crypto = require('crypto');
+const sharp = require('sharp');
 
 const multer = require('multer');
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, 'public/uploads'); // Define the destination directory where files will be saved
-    },
-    filename: function (req, file, cb) {
-      // cb(null, file.originalname); // Use the original file name as the saved file name
-      const safeFilename = slugify(file.originalname, { lower: true });
-      cb(null, safeFilename);
-    },
-  });
-  
-  const upload = multer({ storage: storage });
+const storage = multer.memoryStorage();
 
+const upload = multer({storage: storage}); // Initialize multer for handling form data
+
+const bucketName=process.env.AWS_BUCKET_NAME;
+const bucketRegion=process.env.AWS_REGION;
+const accessKey=process.env.AWS_ACCESS_KEY;
+const secretAccessKey=process.env.AWS_SECRET_KEY;
+
+const s3Client = new S3Client({
+  credentials: {
+    accessKeyId:accessKey,
+    secretAccessKey: secretAccessKey,
+  },
+  region: bucketRegion,
+})
+
+const randomImageName = (bytes = 32) => crypto.randomBytes(bytes).toString('hex');
 
 router.post('/post/questionrequest'
 , upload.single('image')
 , async (req, res) => {
     const {title, body, uid} = req.body;
     const image = req.file;
-    console.log(uid);
-    console.log("Image",image);
-    try {
+    console.log(req.body);
+    console.log(image);
+    //resize the image
+    // const buffer = await sharp(req.file.buffer).resize({height: 1920, width: 1080, fit:"contain"}).toBuffer();
+    const imageName = randomImageName();
+    console.log("Image name", imageName)
+    const params = {
+      Bucket: bucketName,
+      Key: imageName,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype
+    };
+    const command = new PutObjectCommand(params);
+    await s3Client.send(command);
+    
       const question = new Questions({
-        RequestBy: uid,
-        title: title,
-        body: body,
-        ...(image && { image: image.filename }),
-      })
-    res.status(200).json({sucess:'Hi'});
-    question.save();
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to save the question' });
-    }
+          RequestBy: uid,
+          title: title,
+          body: body,
+          image: imageName // Assign the S3 URL to the image field if an image was uploaded
+      });
+      // Save the question to the database
+      res.status(200).json({sucess:'Image has been successfully saved'});
+      await question.save();
 })
 
 
-        // image: {
-        //     data: path.join(__dirname+`./public/uploads/${image.originalname}`),
-        //     contentType: image.mimetype, // Set the content type
-        // }
+
+router.get('/deleteAll', async (req, res) => {
+  try {
+    let deletedCount = 0;
+    const batchSize = 1; // Adjust batch size as needed
+    let result;
+    do {
+      result = await Questions.deleteMany({}).limit(batchSize);
+      deletedCount += result.deletedCount;
+    } while (result.deletedCount > 0);
+    res.send(`Deleted ${deletedCount} documents successfully`);
+  } catch (error) {
+    console.error('Error deleting documents:', error);
+    res.status(500).send('An error occurred while deleting documents');
+  }
+});
+
+
 router.get('/questions', async (req, res) => {
     try {
-        // Questions.deleteMany({});
         const questions = await Questions.find({})
         .populate('RequestBy')
         .populate({
           path: "answers",
           // options: {limit: 1},
           populate: [
+            
             {
               path: "User",
             }]
         })
         .populate('likes')
 
-            // Calculate the like count for each question and add it to the question object
-    const questionsWithLikeCount = questions.map((question) => ({
-      ...question.toObject(),
-      likesCount: question.likes.length // Calculate the like count
-    }));
-
-    res.status(200).json(questionsWithLikeCount);    
+        for(const q of questions) {
+          const GetObjectParams = {
+            Bucket : bucketName,
+            Key: q.image,
+          }
+        const command = new GetObjectCommand(GetObjectParams);
+        url = await getSignedUrl(s3Client, command, {expiresIn: 60});
+        q.imageUrl = url;
+        q.likesCount = q.likes.length
+      }
+        res.status(200).json(questions);    
               
     } catch (error) {
         console.error(error);
@@ -102,7 +138,6 @@ router.post('/post/like', async (req, res)=>{
 })
 router.post('/post/comment', async (req, res) => {
   const {body,uid,qid} = req.body;
-  console.log(body,uid,qid)
   try{
   const answer = new Answers({
       User: uid,
@@ -111,7 +146,6 @@ router.post('/post/comment', async (req, res) => {
   })
   const newAnswer = await answer.save();
   const aid = newAnswer._id.toString();
-  console.log(aid)
   // res.send(answer)
   // Find the question by its ID
   const question = await Questions.findOne({ _id: qid });
@@ -141,7 +175,6 @@ router.get('/comments/:questionId', async (req, res) => {
   }));
     
   res.status(200).json(comments);
-  console.log(comments)
 }
     catch(error) {
       console.error('Error fetching comments', error);
@@ -154,7 +187,6 @@ router.get('/post/likeCount/:postId', async (req, res) => {
   const qid = await req.params.postId;
   try {
   const question = await Questions.findOne({ _id: qid })
-  console.log('Likes count is', question.likes.length);
   const likeCount = question.likes.length;
 
   res.status(200).json(likeCount);
@@ -164,6 +196,4 @@ router.get('/post/likeCount/:postId', async (req, res) => {
       res.status(500);
     };
 });
-
-
 module.exports = router;

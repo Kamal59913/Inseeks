@@ -11,28 +11,28 @@ const UserState = (props) => {
         setUser({});
         localStorage.removeItem('token');
     };
+    const fetchData = async () => {
+        try {
+            const response = await fetch(`${host}/getuser`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "auth-token": localStorage.getItem('token')
+                },
+            });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await fetch(`${host}/getuser`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "auth-token": localStorage.getItem('token')
-                    },
-                });
-
-                if (response.ok) {
-                    const json = await response.json();
-                    setUser(json);
-                }
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false); // Set loading to false regardless of success or failure
+            if (response.ok) {
+                const json = await response.json();
+                setUser(json);
             }
-        };
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false); // Set loading to false regardless of success or failure
+        }
+    };
+    useEffect(() => {
+
 
         if (localStorage.getItem('token')) {
             fetchData();

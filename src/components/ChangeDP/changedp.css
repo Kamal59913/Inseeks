@@ -1,0 +1,130 @@
+
+.question-submit-image{
+    position: relative;
+    position: fixed;
+    margin-left: 26vh;
+    margin-top: 1vh;
+    }
+  .choose-image{
+      background-color: #8CD6B1;
+      height: 6vh;
+      padding-top: 2vh;
+      width: 80vh;
+      margin-left: 32vh;
+      z-index: 1;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: row;
+      gap: 2vh;
+  }
+  .choose-image-tag{
+    height: 6vh;
+    margin-left: 2vh;
+    width: 90vh;
+  }
+  .choose-image-tag2{
+    height: 6vh;
+    width: 6vh;
+  }
+  .post-heading-post{
+      color: rgb(51, 50, 50);
+      position: absolute;
+      margin-top: 0;
+  }
+  
+  
+  h1 {
+      margin-bottom: 2rem;
+    }
+
+    .form-post-image {
+      z-index: 100;
+      display: flex;
+      margin-top: 10px;
+      flex-direction: column;
+      padding: 2rem;
+      border-radius: 8px;
+      position: absolute;
+      margin-left: 32vh;
+      margin-top: 1vh;
+      width: 71vh;
+      height: 40vh;
+      background-color: whitesmoke;
+    }
+    
+    label {
+      font-weight: bold;
+      margin-bottom: 0.7rem;
+      
+    }
+    
+    #image-post {
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border-radius: 4px;
+      font-size: 1rem;
+      border-style: none;
+    }
+
+    .btn-file-upload {
+        display: inline-block;
+        /* width: 16vh;
+        height: 6vh; */
+        padding-top: 2.8vh;
+        padding-left: 3vh;
+        margin-left: 24vh;
+        margin-top: 8vh;
+        /* background-color: #799a84; */
+        color: black;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      
+      /* .btn-file-upload:hover {
+        background-color: #618b6a;
+      } */
+      
+.button-post-img {
+    height: 6vh;
+    width: 20vh;
+    margin-top: 10vh;
+    margin-left: 24vh;
+    background-color: #8CD6B1;
+    color: color;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform .2s;
+    font-weight: 400;
+    }
+    
+    .button-post:hover {
+      transform: scale(0.9);
+    }
+    
+    
+    @media (max-width: 768px) {
+      .form-post {
+        padding: 1rem;
+        width: 430px;
+        left: 20%;
+      }
+  
+      .upper-post{
+          width: 463px;
+          left: 20%;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .form-post {
+        width: 400px;
+        left: 6%;
+      }
+  
+      .upper-post{
+          width: 433px;
+          left: 6%;
+      }
+    }

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
 async function mongooseconnection(){
-    await mongoose.connect('mongodb://127.0.0.1:27017/GiantDatabase')
+    await mongoose.connect(process.env.MONGODBURL)
 }
 module.exports = mongooseconnection;

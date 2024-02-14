@@ -6,7 +6,56 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 var userDetailsFetch = require('../middlewares/userDetailsFetch')
 
-const JWT_SECRET  = 'KamalNapoRitik$class1'
+const {S3Client, GetObjectCommand, PutObjectCommand} = require('@aws-sdk/client-s3')
+const {getSignedUrl} = require("@aws-sdk/s3-request-presigner")
+
+const crypto = require('crypto');
+const sharp = require('sharp');
+
+const multer = require('multer');
+const storage = multer.memoryStorage();
+
+const upload = multer({storage: storage}); // Initialize multer for handling form data
+
+const bucketName=process.env.AWS_BUCKET_NAME;
+const bucketRegion=process.env.AWS_REGION;
+const accessKey=process.env.AWS_ACCESS_KEY;
+const secretAccessKey=process.env.AWS_SECRET_KEY;
+
+const s3Client = new S3Client({
+  credentials: {
+    accessKeyId:accessKey,
+    secretAccessKey: secretAccessKey,
+  },
+  region: bucketRegion,
+})
+
+const randomImageName = (bytes = 32) => crypto.randomBytes(bytes).toString('hex');
+
+router.post('/getuserimg', async (req, res) => {
+    try {
+        const {uid} = req.body;
+        console.log(uid)
+        const user = await SignUpDetails.findById(uid)
+        console.log(user);
+        const imagename = user.imageName;
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        //Send the user data as the response
+            const GetObjectParams = {
+              Bucket : bucketName,
+              Key: imagename,
+            }
+          const command = new GetObjectCommand(GetObjectParams);
+          url = await getSignedUrl(s3Client, command, {expiresIn: 60});
+          console.log(url);
+          res.json(url);
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 router.post('/signupdata', async (req,res) => {
     const {fullname,email,pass,username}=req.body
@@ -96,11 +145,12 @@ router.post('/login', async (req,res)=>{
         const data = {
             user : {
                 id: name.id,
-                name: name.fullname
+                name: name.fullname,
+                image: name.imageName
             }   
         }
 
-        const authToken = jwt.sign(data, JWT_SECRET);
+        const authToken = jwt.sign(data, process.env.JWT_SECRET);
         console.log("This is auth token",authToken)
         res.status(200).json({message: 'user matched',authToken: authToken});
     } 
@@ -120,13 +170,49 @@ router.post('/getuser', userDetailsFetch, async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        // Send the user data as the response
-        res.json(user);
+
+        //Send the user data as the response
+            const GetObjectParams = {
+              Bucket : bucketName,
+              Key: user.image,
+            }
+          const command = new GetObjectCommand(GetObjectParams);
+          url = await getSignedUrl(s3Client, command, {expiresIn: 60});
+          user.imageUrl = url;
+          res.json(user);
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+
+
+router.post('/post/saveuserimage'
+, upload.single('image')
+, async (req, res) => {
+    const {uid} = req.body;
+    const image = req.file;
+
+    //resize the image
+    // const buffer = await sharp(req.file.buffer).resize({height: 400, width: 400, fit:"contain"}).toBuffer();
+    const random_imageName = randomImageName();
+    const params = {
+      Bucket: bucketName,
+      Key: random_imageName,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype
+    };
+    const command = new PutObjectCommand(params);
+    await s3Client.send(command);
+    const filter = {_id: uid};
+    const update = {imageName: random_imageName }
+
+      let doc = await SignUpDetails.findOneAndUpdate(filter,update, {
+        new: true
+      });
+      res.status(200).send(doc.imageName);
+})
 
 module.exports = router;
 

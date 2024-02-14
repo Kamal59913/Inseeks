@@ -1,19 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect} from 'react';
+import HashLoader from "react-spinners/HashLoader";
 import {Routes, Route, useNavigate, Link} from 'react-router-dom';
-
 import axios from 'axios';
 
-
 import './Post.css';
-//http://localhost:5000/api/login
-export default function Post(){
-  const url = "localhost";
 
+const override = {
+  display: "block",
+  margin: "0 auto",
+  borderColor: "red",
+};
+//http://localhost:5000/api/login
+export default function Post(props){
+
+  
+  const url = "localhost";
+  let urlToUpload; 
   const navigate = useNavigate();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [image, setImage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  let [color, setColor] = useState("#ffffff");
+  const [showModal, setShowModal] = useState(false);
 
 
   const userInitial = {}; // Initialize user as null
@@ -49,7 +59,19 @@ export default function Post(){
 }, []);
 
 
-
+ const uploadFile = async () => {
+  const formData = new FormData();
+  try {
+    if (image) {
+      formData.append('image', image);// Inaffective approach since multiple images might have the same name.
+    }
+      const response = await axios.put(urlToUpload, image, { headers: { "Content-Type": "application/json",} });
+      console.log("Success file has been uploaded", response)
+      return response.data;
+  } catch (error) {
+      console.log('Error while calling the API ', error);
+  }
+}
 
   const handleTitleChange = (event) => {
     setTitle(event.target.value);
@@ -65,47 +87,47 @@ export default function Post(){
 
  
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    // e.preventDefault();
     const formData = new FormData();
     formData.append('title',title);
     formData.append('body',body);
     formData.append('uid',uid);
-
-    // if (image) {
-    //   formData.append('image', image); Inaffective approach since multiple images might have the same name.
-    // }
-
+    
     if (image) {
-      // Append a timestamp to the image file name to make it unique
-      const uniqueFilename = `${Date.now()}_${image.name}`;
-      formData.append('image', new File([image], uniqueFilename));
+      formData.append('image', image);// Inaffective approach since multiple images might have the same name.
     }
+
     try {
+      setLoading(true);
       const response = await axios.post(
         `http://${url}:5000/post/questionrequest`,
         formData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            'auth-token': localStorage.getItem('token'), // Add this line if needed
           },
         }
       );
   
       if (response.status === 200) {
         console.log(response);
+        urlToUpload = response.imageUploadingUrl;
+        uploadFile();
         console.log("navigating")
-        navigate('/');
       }
     } catch (err) {
       console.log(err.response);
+    } finally {
+      setLoading(false);
+      props.closeModal();
+      navigate('/');
     }
   };
-
     return(
-        <>
+        <div className='question-submit'>
         <div className="upper-post">
-            <h2 className="post-heading-post">Write a question ...</h2>
+            <div class="upper-tag"><h4 className="post-heading-post">Write a question ...</h4></div>
+            <div class="upper-tag2"><i class="fa-solid fa-x" onClick={props.closeModal}></i></div>
         </div>
         <form className="form-post" 
         onSubmit={handleSubmit} 
@@ -139,10 +161,20 @@ export default function Post(){
         onChange={handleImageChange}
       />
     </div>
-    {/* <Link to="/"> */}
+    {loading && 
+
+<HashLoader 
+color="#799a84"
+loading={loading}
+cssOverride={override}
+size={60}
+aria-label="Loading Spinner"
+data-testid="loader"
+/> 
+    } {/* Show loading indicator */}
       <button className="button-post" type="submit">Submit</button>
       {/* </Link> */}
   </form>
-        </>
+        </div>
     )
 }

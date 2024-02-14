@@ -8,6 +8,7 @@
       title: String,
       body: String,
       image: String,
+      imageUrl: String,
       answers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Answer'
